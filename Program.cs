@@ -2,6 +2,7 @@
 
 try
 {
+    PrepareConsole();
     var app = new PingApp(args);
     app.Run();
     Console.ReadKey(true);
@@ -15,4 +16,9 @@ catch (Exception ex)
     Console.WriteLine("Fatal Error:");
     Console.WriteLine(ex.Message);
     Console.ResetColor();
+}
+
+static void PrepareConsole()
+{
+
 }

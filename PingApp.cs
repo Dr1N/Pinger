@@ -30,43 +30,51 @@ namespace Pinger
         public async void Run()
         {
             isRunning = true;
-
-            var settings = PrepareSettings(configuration);
-            var sender = new PingSender(settings.Timeout, settings.Buffer);
-
-            // Save all errors
-            var errors = new List<PingResult>(10);
-            while (isRunning)
+            try
             {
-                try
+                var settings = PrepareSettings(configuration);
+                var sender = new PingSender(settings.Timeout, settings.Buffer);
+
+                // Save all errors
+                var errors = new List<PingResult>(10);
+                while (isRunning)
                 {
-                    // Current ping result
-                    var replies = new List<PingResult>(settings.BatchSize);
-                    for (int i = 0; i < settings.BatchSize; i++)
+                    try
                     {
-                        var reply = sender.Send(settings.Target);
-                        replies.Add(reply);
-
-                        // Save last errors
-                        if (reply.Status != PingStatus.Success)
+                        // Current ping result
+                        var replies = new List<PingResult>(settings.BatchSize);
+                        for (int i = 0; i < settings.BatchSize; i++)
                         {
-                            if (errors.Count > ErrorLimit)
-                            {
-                                errors.RemoveAt(0);
-                            }
-                            errors.Add(reply);
-                        }
-                    }
+                            var reply = sender.Send(settings.Target);
+                            replies.Add(reply);
 
-                    // Prepare and print result to Console
-                    Result.Update(replies);
-                    consolePrinter.PrintResult(settings, Result, errors);
-                    await Task.Delay(settings.Delay);
+                            // Save last errors
+                            if (reply.Status != PingStatus.Success)
+                            {
+                                if (errors.Count > ErrorLimit)
+                                {
+                                    errors.RemoveAt(0);
+                                }
+                                errors.Add(reply);
+                            }
+                        }
+
+                        // Prepare and print result to Console
+                        Result.Update(replies);
+                        consolePrinter.PrintResult(settings, Result, errors);
+                        await Task.Delay(settings.Delay);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"App error: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"App error: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Fatal Error: {ex.Message}");
+                Console.ResetColor();
             }
         }
 
@@ -91,7 +99,7 @@ namespace Pinger
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Invalid configuration format: {ex.Message}");
                 Console.ResetColor();
-                throw;
+                throw new Exception("Invalid configuration");
             }
         }
     }

@@ -2,6 +2,9 @@
 
 namespace Pinger
 {
+    /// <summary>
+    /// Main app class. Collect all logic
+    /// </summary>
     internal class PingApp
     {
         private const string ConfigurationFileName = "appsettings.json";
@@ -21,13 +24,17 @@ namespace Pinger
         public void Run()
         {
             isRunning = true;
+
             var timeoutInSeconds = int.Parse(configuration["timeout"]);
             var bufferInBytes = int.Parse(configuration["buffer"]);
-
             var sender = new PingSender(timeoutInSeconds, bufferInBytes);
-            var reply = sender.Send(configuration["address"]);
-            Console.WriteLine(reply.Status);
-            Console.WriteLine(reply.Ping.TotalMilliseconds);
+
+            // TODO: use batch ping
+
+            var reply = sender.Send(configuration["target"]);
+            
+            // TODO: prepare result
+            // TODO: pring result
         }
 
         public void Stop()

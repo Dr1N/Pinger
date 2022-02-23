@@ -1,10 +1,9 @@
-﻿using System.Diagnostics;
-using System.Net.NetworkInformation;
+﻿using System.Net.NetworkInformation;
 
 namespace Pinger
 {
     /// <summary>
-    /// Send ICMP ping to host.
+    /// Send ICMP ping to target.
     /// Wrapper on <see cref="System.Net.NetworkInformation.Ping"/>
     /// </summary>
     internal class PingSender
@@ -28,44 +27,33 @@ namespace Pinger
             this.buffer = buffer;
         }
 
-        public PingResult Send(string address)
+        public PingResult Send(string target)
         {
-            if (string.IsNullOrWhiteSpace(address))
+            if (string.IsNullOrWhiteSpace(target))
             {
-                throw new ArgumentNullException(nameof(address));
+                throw new ArgumentNullException(nameof(target));
             }
 
-            var ping = new Ping();
+            using var ping = new Ping();
             var options = new PingOptions
             {
                 DontFragment = true
             };
             var buf = new byte[buffer];
 
-            var result = new PingResult
-            {
-                Ping = TimeSpan.Zero,
-                Status = PingStatus.Error,
-            };
             try
             {
-                var reply = ping.Send(address, timeout, buf, options);
-                if (reply.Status == IPStatus.Success)
-                {
-                    result.Status = PingStatus.Success;
-                    result.Ping = TimeSpan.FromMilliseconds(reply.RoundtripTime);
-                }
+                var reply = ping.Send(target, timeout, buf, options);
+                return new PingResult(reply);
             }
             catch (PingException pex)
             {
-                Debug.WriteLine($"Ping error: {pex.Message}");
+                return new PingResult(pex.Message);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Common error: {ex.Message}");
+                return new PingResult(ex.Message);
             }
-
-            return result;
         }
     }
 }

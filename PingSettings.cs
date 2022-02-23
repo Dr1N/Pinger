@@ -1,6 +1,4 @@
-﻿using System.Net;
-
-namespace Pinger
+﻿namespace Pinger
 {
     internal class PingSettings
     {
@@ -8,7 +6,7 @@ namespace Pinger
 
         public int Buffer { get; }
 
-        public int Batch { get;  }
+        public int BatchSize { get;  }
 
         public string Target { get; }
 
@@ -41,15 +39,9 @@ namespace Pinger
                 throw new ArgumentException("Invalid delay size in configuration. Shoule be > 500 (ms)", nameof(buffer));
             }
 
-            if (!Uri.TryCreate(target, UriKind.Absolute, out var _)
-                || !IPAddress.TryParse(target, out var _))
-            {
-                throw new ArgumentException($"Invalid target for ping. Value: {target}");
-            }
-
             Timeout = timeout;
             Buffer = buffer;
-            Batch = batch;
+            BatchSize = batch;
             Target = target;
             Delay = delay;
         }

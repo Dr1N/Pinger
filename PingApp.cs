@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace Pinger
 {
@@ -9,10 +8,13 @@ namespace Pinger
     internal class PingApp
     {
         private const string ConfigurationFileName = "appsettings.json";
+        private const int ErrorLimit = 5;
 
         private readonly IConfiguration configuration;
         private readonly ConsolePrinter consolePrinter;
         private bool isRunning = false;
+
+        public PingBatchResult Result { get; set; }
 
         public PingApp(string[] args)
         {
@@ -22,6 +24,7 @@ namespace Pinger
 
             configuration = builder.Build();
             consolePrinter = new ConsolePrinter();
+            Result = new PingBatchResult();
         }
 
         public async void Run()
@@ -32,47 +35,44 @@ namespace Pinger
             var sender = new PingSender(settings.Timeout, settings.Buffer);
 
             // Save all errors
-            var errors = new List<PingResult>();
+            var errors = new List<PingResult>(10);
             while (isRunning)
             {
-                // Current ping result
-                var replies = new List<PingResult>(5);
-                for (int i = 0; i < settings.Batch; i++)
+                try
                 {
-                    var reply = sender.Send(settings.Target);
-                    replies.Add(reply);
-                    if (reply.Status != PingStatus.Success)
+                    // Current ping result
+                    var replies = new List<PingResult>(settings.BatchSize);
+                    for (int i = 0; i < settings.BatchSize; i++)
                     {
-                        errors.Add(reply);
+                        var reply = sender.Send(settings.Target);
+                        replies.Add(reply);
+
+                        // Save last errors
+                        if (reply.Status != PingStatus.Success)
+                        {
+                            if (errors.Count > ErrorLimit)
+                            {
+                                errors.RemoveAt(0);
+                            }
+                            errors.Add(reply);
+                        }
                     }
+
+                    // Prepare and print result to Console
+                    Result.Update(replies);
+                    consolePrinter.PrintResult(settings, Result, errors);
+                    await Task.Delay(settings.Delay);
                 }
-                
-                // Print result to Console
-                var batchResult = PrepareResult(replies);
-                consolePrinter.PrintResult(settings, batchResult, errors);
-                await Task.Delay(settings.Delay);
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"App error: {ex.Message}");
+                }
             }
         }
 
         public void Stop()
         {
             isRunning = false;
-        }
-
-        private static PingBatchResult PrepareResult(IEnumerable<PingResult> source)
-        {
-            var avg = TimeSpan.FromMilliseconds(
-                Math.Round(
-                    source.Select(e => e.Ping.TotalMilliseconds)
-                        .Average(),
-                    2));
-            return new PingBatchResult
-            {
-                Count = source.Count(),
-                Time = DateTime.Now,
-                AvgPing = avg,
-                Errors = source.Count(e => e.Status != PingStatus.Success),
-            };
         }
 
         private static PingSettings PrepareSettings(IConfiguration configuration)
